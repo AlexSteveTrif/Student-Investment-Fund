@@ -1,6 +1,6 @@
 
 
-setwd("C:\\Users\\alext\\R Stuff")
+setwd("C:\\Users\\alext\\R Stuff\\Student Fund\\csv files")
 
 
 prices.weekly <- read.csv("Adjusted.weekly.Close.csv")

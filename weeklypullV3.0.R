@@ -12,7 +12,7 @@ today <- print(Sys.Date())
 class(today)
 
 
-setwd("C:\\Users\\alext\\R Stuff") # I'd avoid using a folder that's hooked up to one-drive, set your own up under users!
+setwd("C:\\Users\\alext\\R Stuff\\Student Fund\\csv files") # I'd avoid using a folder that's hooked up to one-drive, set your own up under users!
 
 
 get_stocks_weekly_close_and_lag <- function(symbols, start_date, end_date, metric, lags){
@@ -104,6 +104,6 @@ get_stocks_weekly_close_and_lag(c("AAPL", "MSFT", "TSLA", "GOOGL"),
                                 "2019-12-01", today, "Adjusted", c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
 
 
-this is a new line 
+
 
 
