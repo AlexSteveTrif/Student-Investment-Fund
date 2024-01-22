@@ -45,8 +45,8 @@ library(dplyr)
 # The data includes weekly closing prices and returns, as well as lagged data.
 # The function also generates CSV files for the data.
 
-today <- print(Sys.Date())
-class(today)
+today <- Sys.Date()
+
 
 
 setwd("C:\\Users\\alext\\R Stuff\\Student Fund\\csv files") # I'd avoid using a folder that's hooked up to one-drive, set your own up under users!
@@ -178,6 +178,14 @@ In our portfolio risk assessment, we implement a custom Value at Risk (VaR) mode
 ### R Code Snippet for VaR Model
 The core function, `VaR.engine.Cust.with.ES`, is meticulously constructed to calculate the market-to-market (MtM) values, VaR, and ES for our portfolio. The function takes in a specified period, significance level, and a vector of stock quantities, then performs the following operations:
 
+
+The `VaR.engine.Cust.with.ES` function binds together stock quantities and price data to compute the MtM value, then applies a rolling calculation to estimate VaR and ES, providing us with a temporal view of potential losses.
+
+### Implementation: Stock Data Analysis and Risk Assessment
+
+Our analysis begins with the reading of weekly price data, followed by a detailed risk assessment using the VaR and ES metrics.
+
+#### R Code Snippet for Stock Data Analysis and Risk Assessment
 ```{r, echo=FALSE, message=FALSE}
 
 
@@ -256,25 +264,25 @@ VaR.engine.Cust.with.ES <- function(Period, Significance, ...) {
   a <- ylim.prim[1] - b*ylim.sec[1]
   
   # Create a ggplot of the MtM value, VaR and ES over time.
-  # ggplot(MtM) + 
-  #   geom_line(aes(x = Date, y = MtM.P), colour = "blue") + 
-  #   geom_line(aes(x = Date, y = a + VaR*b), colour = "maroon") + 
-  #   geom_line(aes(x = Date, y = a + ES*b), colour = "green") +  # Add the ES line
-  #   scale_y_continuous("Market-to-Market", 
-  #                      sec.axis = sec_axis(~ (. - a)/b, 
-  #                                          name = "Value at Risk / Expected Shortfall")) + 
-  #   labs(title = "Market-to-Market vs Value at Risk vs Expected Shortfall", 
-  #        subtitle = "Blue = MtM Value, Maroon = VaR, Green = ES", 
-  #        caption = "Source: MtM Data", 
-  #        x = "Date", 
-  #        y = "Market-to-Market", 
-  #        color = "Line Color", 
-  #        shape = "Line Shape", 
-  #        size = "Line Size", 
-  #        linetype = "Line Type", 
-  #        blue = "MtM.P", 
-  #        maroon = "VaR",
-  #        green = "ES")  # Add the ES to the legend
+  ggplot(MtM) +
+    geom_line(aes(x = Date, y = MtM.P), colour = "blue") +
+    geom_line(aes(x = Date, y = a + VaR*b), colour = "maroon") +
+    geom_line(aes(x = Date, y = a + ES*b), colour = "green") +  # Add the ES line
+    scale_y_continuous("Market-to-Market",
+                       sec.axis = sec_axis(~ (. - a)/b,
+                                           name = "Value at Risk / Expected Shortfall")) +
+    labs(title = "Market-to-Market vs Value at Risk vs Expected Shortfall",
+         subtitle = "Blue = MtM Value, Maroon = VaR, Green = ES",
+         caption = "Source: MtM Data",
+         x = "Date",
+         y = "Market-to-Market",
+         color = "Line Color",
+         shape = "Line Shape",
+         size = "Line Size",
+         linetype = "Line Type",
+         blue = "MtM.P",
+         maroon = "VaR",
+         green = "ES")  # Add the ES to the legend
 }
 
 print(substr(names(prices.weekly)[-1], 1, 4)) # Set stock quantities in the following order as a numeric vector. 
@@ -299,21 +307,6 @@ VaR.engine.Cust.with.ES(10, 0.01, 100, 100, 150, 200)
 
 
 
-```
-
-The `VaR.engine.Cust.with.ES` function binds together stock quantities and price data to compute the MtM value, then applies a rolling calculation to estimate VaR and ES, providing us with a temporal view of potential losses.
-
-### Implementation: Stock Data Analysis and Risk Assessment
-
-Our analysis begins with the reading of weekly price data, followed by a detailed risk assessment using the VaR and ES metrics.
-
-#### R Code Snippet for Stock Data Analysis and Risk Assessment
-```{r}
-# Read in weekly adjusted closing prices for the stocks in the portfolio
-prices.weekly <- read.csv("Adjusted.weekly.Close.csv")
-
-# Implement the VaR and ES model
-VaR.engine.Cust.with.ES(10, 0.01, 100, 100, 150, 200)
 ```
 
 In this script, `prices.weekly` is a data frame containing weekly adjusted closing prices for our portfolio's stocks. The `VaR.engine.Cust.with.ES` function is then called with a rolling period of 10 weeks and a significance level of 1% to calculate the portfolio's VaR and ES.
