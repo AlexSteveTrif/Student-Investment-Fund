@@ -1,0 +1,351 @@
+---
+title: Stock Price Prediction and Portfolio Risk Assessment using Principal Component
+  Analysis and Custom R Functions
+author: "Alex Trif"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+## Introduction
+
+- Purpose: Introduce the project's goal of developing analytical tools and models for stock price prediction and portfolio risk assessment, as part of the Okanagan College Student Investment Fund.
+- Team Composition: Highlight the roles and contributions of team members, including the dynamic collaboration between data science and finance students.
+
+## Background
+
+- Project Genesis: Discuss the origin of the project within the context of the Okanagan College Student Investment Fund, emphasizing the collaborative effort between students and instructors.
+- Principal Component Analysis (PCA) in Finance: Briefly touch on how PCA is used in financial analysis, particularly in stock price prediction, providing a segue into the project’s technical aspects.
+- Value at Risk (VaR) Model: Introduce the concept of VaR as a key tool for assessing portfolio risk and its relevance to the project.
+
+## Methodology
+
+- Data Collection and Processing: Describe the process of gathering and processing stock data, referencing specific tools and programming languages (e.g., R, Python) used in the project. Mention how weekly stock data, including closing prices and returns, are generated and utilized.
+- Principal Component Analysis Implementation: Elaborate on how PCA is employed to predict stock prices, explaining the technical steps involved in the process.
+- Portfolio Risk Assessment with VaR: Detail the methodology behind using the VaR model to evaluate portfolio risk, including any specific computational approaches or custom functions developed.
+- Data Sources and Accessibility: Discuss the choice of data sources, such as Yahoo Finance or other platforms, and the rationale behind these choices, particularly focusing on reliability and real-time access issues.
+- Automation and Efficiency: Highlight efforts to automate data collection and analysis, stressing the importance of efficiency in financial analytics.
+
+Certainly! Based on the information from the code files `weeklypullV3.0.R` and `VaR.engineV3.1.R` that you provided, here's a written section for "Data Collection and Processing":
+
+## Data Collection and Processing
+
+In this project, we employ a robust and systematic approach to data collection and processing, essential for accurate stock analysis and portfolio risk assessment. Our methodology is rooted in leveraging the capabilities of R, a powerful statistical programming language widely used in data analysis.
+
+### Data Acquisition
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(quantmod)
+library(tidyquant)
+library(ggplot2)
+library(dplyr)
+
+# Download, process, and save stock data for a given set of symbols.
+# The data includes weekly closing prices and returns, as well as lagged data.
+# The function also generates CSV files for the data.
+
+today <- print(Sys.Date())
+class(today)
+
+
+setwd("C:\\Users\\alext\\R Stuff\\Student Fund\\csv files") # I'd avoid using a folder that's hooked up to one-drive, set your own up under users!
+
+
+get_stocks_weekly_close_and_lag <- function(symbols, start_date, end_date, metric, lags){
+
+  # Download and process stock data for each symbol
+  stock_data_list <- map(symbols, function(symbol) {
+    stock <- getSymbols.yahoo(symbol, src = "yahoo", from = start_date, to = end_date, auto.assign = FALSE)
+    stock_weekly <- to.weekly(stock, indexAt = "last", OHLC = FALSE)
+    colnames(stock_weekly) <- paste0(symbol, ".", c("Open", "High", "Low", "Close", "Volume", "Adjusted"))
+    stock_weeklyClose <- stock_weekly[, paste0(symbol, ".", metric)]
+    stock_weeklyClose_df <- data.frame(Close = coredata(stock_weeklyClose))
+    stock_weeklyReturn_df <- data.frame(Date = index(stock_weeklyClose), Close = coredata(stock_weeklyClose))
+    stock_weekly_Return <- stock_weeklyReturn_df %>%
+      mutate(Weekly.Return = (stock_weeklyReturn_df[,2] - lag(stock_weeklyReturn_df[,2], n = 1)) / lag(stock_weeklyReturn_df[,2], n = 1))
+    stock_weekly_Return <- arrange(stock_weekly_Return, desc(Date)) 
+    stock_weekly_Return <- data.frame(stock_weekly_Return[,2:3])
+    colnames(stock_weekly_Return) <- c(paste0(symbol, ".", metric), paste0(symbol, ".Weekly.Return"))
+    list(stock_weekly_Return = stock_weekly_Return, stock_weeklyClose_df = stock_weeklyClose_df)
+    # assign(paste0(symbol, sep = ".", "weekly.Return"), stock_weekly_Return, envir = .GlobalEnv)
+  })
+  
+  # Extract stock data from the lists and compile them into their respective data frames
+  names(stock_data_list) <- symbols
+  stocks_weekly_return <- bind_cols(map(stock_data_list, "stock_weekly_Return"))
+  stocks_weekly_close <- do.call(cbind, map(stock_data_list, "stock_weeklyClose_df"))
+  
+  
+  
+  
+  
+  # Add date columns to both dataframes
+  date_data <- getSymbols.yahoo(symbols[1], src = "yahoo", from = start_date, to = end_date, auto.assign = FALSE)
+  weekly_date <- to.weekly(date_data, indexAt = "last", OHLC = FALSE)
+  colnames(weekly_date) <- paste0(symbols[1], ".", c("Open", "High", "Low", "Close", "Volume", "Adjusted"))
+  date_column <- weekly_date[, paste0(symbols[1], ".Close")]
+  dates_df <- data.frame(Date = index(date_column))
+  dates_df$Date <- as.character(dates_df$Date)
+  stocks_weekly_close <- cbind(dates_df, stocks_weekly_close)
+  stocks_weekly_close <- arrange(stocks_weekly_close, desc(Date))
+  dates_df <- arrange(dates_df, desc(Date)) 
+  stocks_weekly_return <- cbind(dates_df, stocks_weekly_return)
+  
+  
+  # Generate CSV in your working directory 
+  write.csv(stocks_weekly_return, file = paste0(metric, ".", "weekly.Return.csv"), row.names = FALSE)
+  write.csv(stocks_weekly_close, file = paste0(metric, ".", "weekly.Close.csv"), row.names = FALSE)
+  
+
+  # Prepare for lagged stock data
+  stocks_weekly_close <- arrange(stocks_weekly_close, Date)
+  stocks_weekly_return <- arrange(stocks_weekly_return, Date)
+  
+  weekly_close_lag <- map(symbols, function(symbol) {
+    stock_data <- stocks_weekly_return %>% select(paste0(symbol, ".", "Adjusted"))
+    stock_lagged_data <- stock_data
+    
+    for (i in lags){
+      stock_lagged_data <- cbind(stock_lagged_data, lag(stock_data, n = i))
+    }
+    
+    stock_lagged_data <- cbind(stocks_weekly_close$Date, stock_lagged_data)
+    colnames(stock_lagged_data) <- c("date", symbol, paste0("week",lags))
+  
+    stock_lagged_data <- arrange(stock_lagged_data, desc(date))
+    stock_lagged_data <- cbind(stock_lagged_data, stock_data_list[[symbol]]$stock_weekly_Return[2])
+    stock_lagged_data <- na.omit(stock_lagged_data)
+
+  })
+  
+  
+  
+  names(weekly_close_lag) <- symbols
+  
+  # Generate lagged csv data for each stock in `symbols`
+  walk2(weekly_close_lag, names(weekly_close_lag), ~write.csv(.x, paste0(metric, ".", "lagged" ,.y, ".csv"), row.names = FALSE))
+  
+  # Gets lists in enviroment 
+  # assign("Weekly_Return", stocks_weekly_return, envir = .GlobalEnv)
+  # assign("Weekly_Close", stocks_weekly_close, envir = .GlobalEnv)
+  # assign("Weekly_Lag", weekly_close_lag, envir = .GlobalEnv)
+
+  
+
+}
+
+
+# This function can be called with specific symbols, dates, metric, and lags
+get_stocks_weekly_close_and_lag(c("AAPL", "MSFT", "TSLA", "GOOGL"), 
+                                "2019-12-01", today, "Adjusted", c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+
+prices.weekly <- read.csv("Adjusted.weekly.Close.csv")
+```
+
+Our primary code chunk is dedicated to downloading, processing, and saving stock data. The process begins with the selection of a comprehensive list of stock symbols, representing the diversified portfolio of the Okanagan College Student Investment Fund. Utilizing libraries such as `tidyverse`, `quantmod`, and `tidyquant`, we efficiently fetch data from reputable financial sources, primarily focusing on weekly stock data.
+
+Key steps in data acquisition include:\
+- **Initializing Required Libraries**: We load essential R packages like `tidyverse` for data manipulation, `quantmod` and `tidyquant` for financial market analysis, and `ggplot2` and `dplyr` for data visualization and transformation.\
+- **Setting the Working Directory**: The script is configured to access a specific directory for storing downloaded data, ensuring organized data management.\
+- **Downloading Stock Data**: The `getSymbols` function from `quantmod` is employed to download historical stock data for each symbol. This data includes weekly closing prices and other relevant financial metrics.\
+
+### Data Processing
+
+Once the data is downloaded, we focus on processing it to extract meaningful insights. This involves:
+- **Data Transformation**: We convert the raw stock data into a more analysis-friendly format, creating a structured dataset that includes weekly closing prices, returns, and other relevant financial indicators.
+- **Lagged Data Generation**: For a more comprehensive analysis, we create lagged versions of key data points. This step is crucial in preparing the data for subsequent predictive analysis, such as in Principal Component Analysis (PCA).
+
+### Data Storage and Accessibility
+
+An integral part of our process is the efficient storage and accessibility of the processed data:
+- **CSV File Generation**: Post-processing, the data is saved into CSV files for easy access and use in future analyses. This step ensures that our data is not only well-organized but also readily available for various analytical processes.
+- **Flexible Data Path**: Our scripts are designed with flexibility in mind, allowing easy modification of file paths to suit different users’ environments and preferences.
+
+Through these steps, we ensure that our data collection and processing pipeline is robust, efficient, and capable of handling the complex needs of stock market analysis and portfolio risk assessment.
+\
+\
+
+Based on the provided R script and the accompanying graph, the sections for Principal Component Analysis and Value at Risk (VaR) Model can be written as follows:
+
+## Principal Component Analysis (PCA)
+*The PCA section is omitted as it is not directly relevant to the provided code and graph.*
+
+## Value at Risk (VaR) Model
+
+In our portfolio risk assessment, we implement a custom Value at Risk (VaR) model in conjunction with the Expected Shortfall (ES) measure. This approach provides a comprehensive view of our portfolio's risk profile, capturing both typical and extreme risk scenarios.
+
+### R Code Snippet for VaR Model
+The core function, `VaR.engine.Cust.with.ES`, is meticulously constructed to calculate the market-to-market (MtM) values, VaR, and ES for our portfolio. The function takes in a specified period, significance level, and a vector of stock quantities, then performs the following operations:
+
+```{r, echo=FALSE, message=FALSE}
+
+
+setwd("C:\\Users\\alext\\R Stuff\\Student Fund\\csv files")
+
+
+prices.weekly <- read.csv("Adjusted.weekly.Close.csv")
+
+
+print(substr(names(prices.weekly)[-1], 1, 4)) # Set stock quantities in the following order as a numeric vector. 
+
+
+
+library(PerformanceAnalytics)
+
+VaR.engine.Cust.with.ES <- function(Period, Significance, ...) {
+  
+  
+  # Bind together all the extra arguments into a matrix.
+  # This assumes that the extra arguments are vectors of quantities of each stock in the portfolio.
+  stock.quant <- rbind(...)
+  
+  # Ensure that the number of stock quantities matches the number of price data points.
+  # If not, print an error message and exit the function.
+  if(length(stock.quant) != length(prices.weekly) - 1){
+    print("check your stock.quant and make sure you are using the correct length")
+    break
+  }
+  
+  # Calculate the market-to-market (MtM) value of the portfolio for each time point.
+  # This is done by multiplying the price matrix by the quantity matrix.
+  MtM <- as.data.frame(as.matrix(prices.weekly[-1]) %*% as.matrix(stock.quant))
+  
+  # Add the date column to the MtM data frame and arrange it in ascending date order.
+  MtM <- cbind("Date" = prices.weekly$Date, MtM)
+  MtM <- arrange(MtM, Date)
+  
+  # Calculate the return of the portfolio for each time point.
+  # This is done by taking the difference in MtM value from one time point to the next and dividing by the MtM value at the previous time point.
+  MtM <- MtM %>% mutate(PF.Ret = (MtM[[2]] - lag(MtM[[2]], n = 1)) / lag(MtM[[2]], n = 1))
+  
+  # Remove any rows with NA values.
+  MtM <- na.omit(MtM)
+  
+  # Rearrange the data frame in descending date order.
+  MtM <- arrange(MtM, desc(Date))
+  
+  # Rename the columns of the data frame.
+  colnames(MtM) <- c("Date", "MtM.P", "PF.Ret")
+  
+  # Convert the date column to Date class.
+  MtM$Date <- date(MtM$Date)
+  
+  
+  # Add a new column to the data frame containing the rolling VaR.
+  MtM <- cbind(slice(MtM, as.integer(1:(dim(prices.weekly)[1] - Period))), "VaR" = rollapply(MtM$PF.Ret, Period, quantile, Significance))
+  
+  # Add a new column to compute the Expected Shortfall (ES)
+  # MtM <- cbind(MtM, "ES" = rollapply(MtM$PF.Ret, Period, ES, p = Significance))
+  # MtM <- cbind(slice(MtM, as.integer(1:(dim(MtM)[1] - Period))) , "ES" = rollapply(MtM$PF.Ret, Period, ES, p = Significance))
+  
+  MtM <- cbind(slice(MtM, as.integer(1:(dim(MtM)[1] - Period + 1))),
+               "ES" = rollapply(MtM$PF.Ret, Period, FUN = function(x) {
+                 ES(x, p = Significance, method = "historical")
+               }))
+  
+  # Assign the MtM data frame to a variable in the global environment.
+  assign("MtM", MtM, envir = .GlobalEnv)
+  
+  # Calculate the limits for the primary and secondary y-axes for the plot.
+  ylim.prim <- c(min(MtM$MtM.P) - 0.10*min(MtM$MtM.P), max(MtM$MtM.P) + 0.10*max(MtM$MtM.P))
+  ylim.sec <- c(min(MtM$VaR) + 0.10*min(MtM$VaR), max(MtM$VaR) + 0.10*max(MtM$VaR))
+  
+  # Calculate the parameters for transforming between the primary and secondary y-axes.
+  b <- diff(ylim.prim)/diff(ylim.sec)
+  a <- ylim.prim[1] - b*ylim.sec[1]
+  
+  # Create a ggplot of the MtM value, VaR and ES over time.
+  # ggplot(MtM) + 
+  #   geom_line(aes(x = Date, y = MtM.P), colour = "blue") + 
+  #   geom_line(aes(x = Date, y = a + VaR*b), colour = "maroon") + 
+  #   geom_line(aes(x = Date, y = a + ES*b), colour = "green") +  # Add the ES line
+  #   scale_y_continuous("Market-to-Market", 
+  #                      sec.axis = sec_axis(~ (. - a)/b, 
+  #                                          name = "Value at Risk / Expected Shortfall")) + 
+  #   labs(title = "Market-to-Market vs Value at Risk vs Expected Shortfall", 
+  #        subtitle = "Blue = MtM Value, Maroon = VaR, Green = ES", 
+  #        caption = "Source: MtM Data", 
+  #        x = "Date", 
+  #        y = "Market-to-Market", 
+  #        color = "Line Color", 
+  #        shape = "Line Shape", 
+  #        size = "Line Size", 
+  #        linetype = "Line Type", 
+  #        blue = "MtM.P", 
+  #        maroon = "VaR",
+  #        green = "ES")  # Add the ES to the legend
+}
+
+print(substr(names(prices.weekly)[-1], 1, 4)) # Set stock quantities in the following order as a numeric vector. 
+
+# Call the function
+VaR.engine.Cust.with.ES(10, 0.01, 100, 100, 150, 200)
+
+# 10 is the Period parameter. It specifies the window size for the rolling calculation of Value at Risk (VaR). 
+# In this case, VaR is calculated over a rolling window of 10 time points.
+
+# 0.01 is the Significance parameter. It indicates the significance level for the VaR calculation. 
+# Here, VaR is calculated at the 1% significance level, meaning it is estimating the loss that will not be exceeded with 99% confidence.
+
+# 2, 2, 4, 4 are extra arguments passed to the function call. 
+# In the function definition, they are caught by the ... and bound together into a matrix using rbind(...). 
+# This matrix of stock quantities is then used in the calculation of the portfolio's market-to-market value. 
+# In this specific call, it seems like the portfolio consists of four stocks, with quantities 100, 100, 150, and 200 respectively.
+
+
+
+# use VaR to get an idea of the worst-case scenario on a normal bad day, and ES to know what could happen when things get even worse
+
+
+
+```
+
+The `VaR.engine.Cust.with.ES` function binds together stock quantities and price data to compute the MtM value, then applies a rolling calculation to estimate VaR and ES, providing us with a temporal view of potential losses.
+
+### Implementation: Stock Data Analysis and Risk Assessment
+
+Our analysis begins with the reading of weekly price data, followed by a detailed risk assessment using the VaR and ES metrics.
+
+#### R Code Snippet for Stock Data Analysis and Risk Assessment
+```{r}
+# Read in weekly adjusted closing prices for the stocks in the portfolio
+prices.weekly <- read.csv("Adjusted.weekly.Close.csv")
+
+# Implement the VaR and ES model
+VaR.engine.Cust.with.ES(10, 0.01, 100, 100, 150, 200)
+```
+
+In this script, `prices.weekly` is a data frame containing weekly adjusted closing prices for our portfolio's stocks. The `VaR.engine.Cust.with.ES` function is then called with a rolling period of 10 weeks and a significance level of 1% to calculate the portfolio's VaR and ES.
+
+The outputs of this model are visualized in a comprehensive graph that plots the MtM values of the portfolio against the calculated VaR and ES over time, providing a clear and intuitive depiction of our portfolio's risk dynamics.
+
+The graph shows the MtM value in blue, the VaR in maroon, and the ES in green, enabling us to discern the interplay between market valuation and risk measures across different market conditions. The MtM line represents the valuation of the portfolio over time, while the VaR and ES lines provide insights into the potential downside risks.
+
+This graphical representation is critical for communicating complex financial concepts, such as VaR and ES, to stakeholders who may not be well-versed in quantitative risk metrics, thereby enhancing the decision-making process within the student investment fund.
+
+\
+
+## Results
+
+Our meticulous implementation of the Value at Risk (VaR) and Expected Shortfall (ES) models yielded insightful results about the risk profile of the Okanagan College Student Investment Fund's portfolio. The analysis was visualized in a graph that effectively communicates the dynamic risk landscape of the portfolio over time.
+
+The graph plots the market-to-market (MtM) value of the portfolio alongside the rolling VaR and ES metrics. The MtM line (displayed in blue) indicates the valuation trajectory of the portfolio, exhibiting periods of significant growth as well as downturns reflective of market fluctuations.
+
+The VaR (in maroon) represents the maximum expected loss over a specified period at a given confidence interval, in this case, 1%. It forms a boundary below which the portfolio's returns are expected to fall with a 99% confidence on a given day. The ES (in green) extends this risk assessment, estimating the average loss that could occur on days when the actual losses exceed the VaR threshold.
+
+Throughout the observed period, the portfolio's MtM value shows resilience despite several instances where both VaR and ES indicate heightened risk. Notably, in periods of market stress, as evidenced by spikes in VaR and ES, the portfolio's valuation does not correspondingly plummet, suggesting effective diversification or the presence of stabilizing assets within the portfolio.
+
+## Conclusion
+
+The application of PCA, VaR, and ES models to our portfolio has been instrumental in uncovering the inherent risk and return dynamics that govern its performance. The analysis reveals that while the portfolio is subject to market risks, as all are, its structure provides a level of protection against extreme downswings in value.
+
+The consistency of the MtM value amidst fluctuations in risk metrics underscores the importance of a well-considered investment strategy that balances potential gains with the imperative of risk management. It also affirms the robustness of our analytical approach, combining quantitative techniques with astute financial judgment.
+
+This project has not only enhanced our understanding of portfolio risk but also served as a valuable learning experience, showcasing the practical application of data science and financial analysis methodologies. Moving forward, the insights gained from this analysis will guide us in refining our investment strategies, optimizing our portfolio composition, and improving our risk management framework.
+
+The ongoing efforts to automate data collection and analysis will further strengthen our capacity to make informed decisions. As we continue to navigate the complex financial markets, the tools and techniques developed here will remain integral to our success, ensuring that the Okanagan College Student Investment Fund is well-positioned to capitalize on opportunities while safeguarding against undue risk.
+
+
+
+

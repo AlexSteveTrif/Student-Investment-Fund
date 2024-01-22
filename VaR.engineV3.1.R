@@ -22,7 +22,7 @@ VaR.engine.Cust.with.ES <- function(Period, Significance, ...) {
   # Ensure that the number of stock quantities matches the number of price data points.
   # If not, print an error message and exit the function.
   if(length(stock.quant) != length(prices.weekly) - 1){
-    print("you fucked up, check your stock.quant and make sure you are using the correct length")
+    print("check your stock.quant and make sure you are using the correct length")
     break
   }
   
@@ -115,4 +115,5 @@ VaR.engine.Cust.with.ES(10, 0.01, 100, 100, 150, 200)
 
 
 # use VaR to get an idea of the worst-case scenario on a normal bad day, and ES to know what could happen when things get even worse
+
 
