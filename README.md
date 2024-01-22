@@ -1,5 +1,4 @@
 
-```markdown
 # Okanagan College Student Investment Fund Analysis
 
 ## Overview
@@ -43,5 +42,5 @@ The content of this project itself is licensed under the [Creative Commons Attri
 ## Contact
 For any further questions, you can reach out to me at [alextrif25@gmail.com](mailto:alextrif25@gmail.com).
 
-```
+
 
