@@ -8,7 +8,7 @@ This repository contains the financial analysis and risk assessment models I dev
 - `weeklypullV3.0.R`: Script for automating the extraction and processing of weekly stock data.
 - `VaR.engineV3.1.R`: Custom R function for calculating the Value at Risk and Expected Shortfall.
 - `Project_Report.pdf`: Detailed project report including methodology, results, and conclusion.
-- 'Portfolio Risk Assessment.Rmd': MArkdown file used to generate pdf file
+- `Portfolio Risk Assessment.Rmd`: Markdown file used to generate pdf file
 
 ## Installation
 To run these scripts, you will need R and the following R packages: `tidyverse`, `quantmod`, `tidyquant`, `PerformanceAnalytics`, `ggplot2`, and `dplyr`. Install R from [CRAN](https://cran.r-project.org/) and the packages using the following commands in your R console:
