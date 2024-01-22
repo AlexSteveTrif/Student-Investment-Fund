@@ -3,18 +3,18 @@
 # Okanagan College Student Investment Fund Analysis
 
 ## Overview
-This repository contains the financial analysis and risk assessment models I developed as a Junior Analyst for the Okanagan College Student Investment Fund. The project showcases my work in applying Principal Component Analysis (PCA) for stock price predictions, automating data collection, and implementing a custom Value at Risk (VaR) and Expected Shortfall (ES) model for portfolio risk evaluation.
+This repository contains the financial analysis and risk assessment models I developed as a Junior Analyst for the Okanagan College Student Investment Fund. The project showcases my work in applying Principal Component Analysis (PCA) for stock price predictions, automating data collection, and implementing a custom Value at Risk (VaR) and Expected Shortfall (ES) model for portfolio risk evaluation. The stocks I choose are placeholder stocks and do not represent any stock descions made my the Okanagan College Student Investment Fund. 
 
 ## Contents
 - `weeklypullV3.0.R`: Script for automating the extraction and processing of weekly stock data.
 - `VaR.engineV3.1.R`: Custom R function for calculating the Value at Risk and Expected Shortfall.
-- `visualization.png`: Graphical representation of market-to-market values against VaR and ES over time.
 - `Project_Report.pdf`: Detailed project report including methodology, results, and conclusion.
+- 'Portfolio Risk Assessment.Rmd': MArkdown file used to generate pdf file
 
 ## Installation
 To run these scripts, you will need R and the following R packages: `tidyverse`, `quantmod`, `tidyquant`, `PerformanceAnalytics`, `ggplot2`, and `dplyr`. Install R from [CRAN](https://cran.r-project.org/) and the packages using the following commands in your R console:
 
-```R
+```{r}
 install.packages("tidyverse")
 install.packages("quantmod")
 install.packages("tidyquant")
